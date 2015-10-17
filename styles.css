@@ -1,3 +1,27 @@
+#menu {
+		background-color: #eeeeee;
+		height: 700px;
+		width: 300px;
+		float: left;
+}
+
+#section {
+	width: auto;
+	background-color: white;
+	text-align: center;
+}
+
 #canvas {
 	border: 1px solid black;
+	padding-left: 0;
+	padding-right: 0
+	margin-left: auto;
+	margin-right: auto;
+	display: block;
+}
+
+#speedValue #gridValue #radiusValue #deathValue #genValue{
+	border:0;
+	color:#f6931f;
+	font-weight:bold;
 }

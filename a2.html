@@ -3,21 +3,55 @@
 	<head>
 		<meta charset="utf-8">
 		<title>COMP 426, Fall 2015, A2</title>
-		
+
+		<link rel="stylesheet" href="styles.css">
+		<link rel="stylesheet" href="jquery-ui.min.css">
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
-		
-		<script type="text/javascript" src="main.js"></script>
-		
-		<link rel="stylesheet" type="text/css" href="styles.css">
+		<script src="jquery-ui.min.js"></script>
+		<script src="main.js"></script>
 	</head>
 	<body>
-		<canvas id="canvas" width="800" height="800"></canvas><br>
-		Speed: <input id="speedSlider" type="range" min="1" max="1000" step="10">
-		Grid Size: <input id="gridSlider" type="range" min="20" max="200" step="10">
-		 <button id="startBtn">Start</button>
-		 <button id="stopBtn">Stop</button>
-		 <button id="stepBtn">Step</button>
-		 <button id="resetBtn">Reset</button> 
-		 <button id="randomBtn">Randomize</button> 
+		<div id="menu">
+			<p>
+				<label for="speedValue">Speed:</label>
+				<input type="text" id="speedValue" readonly>
+			</p>
+			<div id="speedSlider"></div>
+			<p>
+				<label for="gridValue">Grid Size:</label>
+				<input type="text" id="gridValue" readonly>
+			</p>
+			<div id="gridSlider"></div>
+			<p>
+				<label for="radiusValue">Neighbor Radius:</label>
+				<input type="text" id="radiusValue" readonly>
+			</p>
+			<div id="radiusSlider"></div>
+			<p>
+				<label for="deathValue">Loneliness and Overpopulation Bounds:</label>
+				<input type="text" id="deathValue" readonly>
+			</p>
+			<div id="deathSlider"></div>
+			<p>
+				<label for="genValue">Generation Bounds:</label>
+				<input type="text" id="genValue" readonly>
+			</p>
+			<div id="generationSlider"></div>
+
+			<label for="boundaryMenu">Neighbors located outside grid</label>
+			<select name="boundaryMenu" id="boundaryMenu">
+				<option value="boundaryDead"> are considered dead</option>
+				<option value="boundaryAlive"> are considered alive</option>
+				<option value="boundaryToroidal"> wrap around to other side of grid</option>
+			</select>
+		</div>
+		<div id="section">
+			<canvas id="canvas" width="800" height="800"></canvas><br>
+			 <button id="startBtn">Start</button>
+			 <button id="stopBtn">Stop</button>
+			 <button id="stepBtn">Step</button>
+			 <button id="resetBtn">Reset</button>
+			 <button id="randomBtn">Randomize</button>
+		</div>
 	</body>
 </html>

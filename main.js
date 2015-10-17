@@ -5,14 +5,13 @@ var ctx;
 
 Game.Speed = 1000;    //Speed to run the simulation, 1000 = 1ms
 Game.Cells = [];      //Array to hold all the cell
-Game.GridSize = 50;
+Game.GridSize = 20;
 Game.NeighborRadius = 1;
 Game.LonelinessThreshold = 2;
 Game.OverpopulationThreshold = 3;
 Game.GenerationMin = 3;
-Game.GenerationMax = 4;
+Game.GenerationMax = 3;
 Game.IntervalID = false;    //Id of game. true if running, false if not running
-
 /* Initialize Cells by total height and width */
 Game.initCells = function () {
   for (var y = 0; y < Game.GridSize; ++y)
@@ -45,12 +44,12 @@ Game.step = function () {
 Game.isRunning = function () {
   return Game.IntervalID !== false;
 };
-/* Reset will clear the screen, end the simulation, and start a new one*/
+/* Reset will clear the screen, reset all cells to non evaluated, clear the screen */
 Game.reset = function () {
   Game.stop();
   for (var i = 0; i < Game.Cells.length; ++i)
     Game.Cells[i].reset();
-  /* Should clear the screen since every cell should be non evaluated*/
+  /* Should clear the screen since every cell should be non evaluated */
   Game.draw();
 };
 /* Called with setinterval to do updates and draws */
@@ -87,14 +86,29 @@ Game.randomize = function () {
 /* Change the number of cells within the grid. Does not change canvas size */
 Game.resize = function (newsize) {
   console.log("Resize called with new size: %d", newsize);
-
-  Game.stop();  
+  /* Stop the current simulation*/
+  Game.stop();
   /* Set the gridsize to the slider value */
   Game.GridSize = newsize;
   /* We resize the cell size to fit the canvas with the appropriate grid size*/
   Game.CellSize = ctx.canvas.width / Game.GridSize;
+  /* Clear the array of cells */
+  Game.Cells.length = 0;
+  /* Reinitialize new cells*/
+  Game.initCells();
 };
-/* new class for cells */
+/* Change the speed of the simulation to the input value*/
+Game.changeSpeed = function(newspeed) {
+  Game.stop();
+  Game.Speed = newspeed;
+  Game.start();
+}
+
+/** new class for cells
+* Color key
+* Non-evaluated: rgb(255, 255, 255)
+* Dead: rgba(192,192,192,0.7)
+* Alive: rgb(255,255,0) **/
 function Cell(x, y) {
   this.x = x;
   this.y = y;
@@ -104,7 +118,8 @@ function Cell(x, y) {
 }
 /* Function to call when */
 Cell.prototype.update = function () {
-  var neighborcount = this.NeighborsAlive();
+  var neighborcount =
+  console.log(neighborcount);
 
   /* Only check alive cells */
   if (this.alive === true) {
@@ -115,7 +130,7 @@ Cell.prototype.update = function () {
     }
   }
   /* Check dead cells for generation*/
-  else if (neighborcount >= Game.GenerationMin && neighborcount < Game.GenerationMax) {
+  else if (neighborcount >= Game.GenerationMin && neighborcount <= Game.GenerationMax) {
     console.log("Generation");
     this.setAlive();
   }
@@ -123,30 +138,25 @@ Cell.prototype.update = function () {
 /* Draw the cell */
 Cell.prototype.draw = function () {
   ctx.fillStyle = this.color;
-  var size = Game.CellSize;
-  ctx.fillRect(this.x * size, this.y * size, size, size);
+  ctx.fillRect(this.x * Game.CellSize, this.y * Game.CellSize, Game.CellSize, Game.CellSize);
 };
 /* Find all of the cells that are alive within the radius */
-Cell.prototype.NeighborsAlive = function () {
+Cell.prototype.CheckBoundaryDead = function () {
   /* Counts the number of neighbors alive within the radius */
   var counter = 0;
-  var radius = Game.NeighborRadius;
-  
+
   /* Get boundaries of the radius to check, currently just stop at edges*/
-  var Top = this.y - radius;
-  Top = (Top < 0) ? 0 : Top;
-  var Bot = this.y + radius;
-  Bot = (Bot >= Game.GridSize) ? Game.GridSize : Bot;
-  var Left = this.x - radius;
-  Left = (Left < 0) ? 0 : Left;
-  var Right = this.x + radius;
-  Right = (Right >= Game.GridSize) ? Game.GridSize : Right;
+  var Top = this.y - Game.NeighborRadius;
+  var Bot = this.y + Game.NeighborRadius;
+  var Left = this.x - Game.NeighborRadius;
+  var Right = this.x + Game.NeighborRadius;
 
   for (var y = Top; y < Bot; ++y)
     for (var x = Left; x < Right; ++x) {
-      /* Don't add the center cell to the neighbour count*/
-      if (this.x == x && this.y == y)
+      /* If the neighbor is out of bounds then we consider it dead and dont count it */
+      if (Top < 0 || Bot > Game.GridSize || Left < 0 || Right > Game.GridSize || (this.y == y && this.x == x))
         continue;
+
       /* If the neighbor is alive increment the counter*/
       if (Game.Cells[x + y * Game.GridSize].alive === true)
         ++counter;
@@ -154,89 +164,191 @@ Cell.prototype.NeighborsAlive = function () {
 
   return counter;
 };
-/* Set cell to non evaluated and dead*/
+
+CheckBoundaryAlive = function() {
+  var counter = 0;
+
+  /* Get boundaries of the radius to check, currently just stop at edges*/
+  var Top = this.y - Game.NeighborRadius;
+  var Bot = this.y + Game.NeighborRadius;
+  var Left = this.x - Game.NeighborRadius;
+  var Right = this.x + Game.NeighborRadius;
+
+  for (var y = Top; y < Bot; ++y)
+    for (var x = Left; x < Right; ++x) {
+      /* If the neighbor is out of bounds then we consider it always alive*/
+      if (Top < 0 || Bot > Game.GridSize || Left < 0 || Right > Game.GridSize)
+      {
+        ++counter;
+        continue;
+      }
+
+      /* We don't check ourselves*/
+      if (this.y == y && this.x == x)
+        continue;
+
+      /* If the neighbor is alive increment the counter*/
+      if (Game.Cells[x + y * Game.GridSize].alive === true)
+        ++counter;
+    }
+
+  return counter;
+  };
+
+function CheckToroidal() {
+
+}
+
+/* Set cell to non evaluated and dead */
 Cell.prototype.reset = function () {
   this.evaluated = false;
   this.alive = false;
+  this.color = "rgb(255, 255, 255)";
 };
-
+/* Set the cell to dead*/
 Cell.prototype.setDead = function() {
   this.alive = false;
   this.color = "rgba(192,192,192,0.7)";
 }
-
+/* Set the cell to alive and evaluated*/
 Cell.prototype.setAlive = function() {
   this.evaluated = true;
-  this.alive = true;  
-  this.color = this.color = "rgb(255,255,0)";
+  this.alive = true;
+  this.color = "rgb(255,255,0)";
 }
-
 /* If the cell is alive then set dead or if dead set alive */
 Cell.prototype.flipState = function() {
   if (this.alive)
     this.setDead();
-  else 
-    this.setAlive();  
+  else
+    this.setAlive();
 }
-
+/* Get position of mouse on the canvas*/
 function getMousePos(canvas, event) {
-  var rect = canvas.getBoundingClientRect();
-  return {
-    x: event.clientX - rect.left,
-    y: event.clientY - rect.top
-  };
+    var rect = canvas.getBoundingClientRect();
+    return {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top
+    };
 }
-
+/* Get the cell position on click using mouse position*/
 function getCellPos(mousePos) {
   return {
-    x: Math.floor(mousePos.x / Game.CellSize),
-    y: Math.floor(mousePos.y / Game.CellSize)
+    x: Math.floor( mousePos.x / Game.GridSize),
+    y: Math.floor( mousePos.y / Game.GridSize)
   };
 }
-
 /* First function called when the document is loaded MAIN */
 $(document).ready(function () {
   canvas = $('#canvas')[0];
   ctx = canvas.getContext('2d');
 
+  /* Get the size of a cell by dividing canvas width by grid size */
   Game.CellSize = ctx.canvas.width / Game.GridSize;
-  console.log("Cell Size is: %f", Game.CellSize);
-    
+
+  console.log("Canvas %d, %d", ctx.canvas.width, ctx.canvas.height);
+
   /* Initialize a grid of cells*/
   Game.initCells();
 
+  /* Start the simulation*/
   $('#startBtn').click(Game.start);
-
   $('#stopBtn').click(Game.stop);
-
   $('#stepBtn').click(Game.step);
-
   $('#resetBtn').click(Game.reset);
-
   $('#randomBtn').click(Game.randomize);
-
   $('#canvas').click(function (event) {
     var mousePos = getMousePos(canvas, event);
     var cellPos = getCellPos(mousePos);
     var clickedCell = Game.Cells[cellPos.x + cellPos.y * Game.GridSize];
-    
-    var message = "Clicked cell position: " + cellPos.x + ',' + cellPos.y;
+
+    var message = "Clicked cell position: " + mousePos.x + ',' + mousePos.y;
     console.log(message);
-    
+    console.log(Game.CellSize);
+
+    /* Event based on which click event occurred*/
     if (event.shiftKey)
       clickedCell.setAlive();
     else if (event.ctrlKey)
       clickedCell.setDead();
-    /* Flip the cells state*/
     else
       clickedCell.flipState();
   });
 
-  $('#speedSlider').change(function (event) {
-    console.log(event.target.value);
+  /* Set initial display values here*/
+  $('#speedValue').val(Game.Speed);   //Set inital speed value
+  $('#gridValue').val(Game.GridSize + " x " + Game.GridSize);
+  $('#radiusValue').val(Game.NeighborRadius);   //Set initial radius display value
+  $('#deathValue').val(Game.LonelinessThreshold + " - " + Game.OverpopulationThreshold);
+  $('#genValue').val(Game.GenerationMin + " - " + Game.GenerationMax);
+
+  /* Menu items here */
+  $('#speedSlider').slider({
+    range: "min",
+    min: 1,
+    max: 1000,
+    value: Game.Speed,
+    slide: function(event, ui) {
+      Game.changeSpeed(ui.value);
+      $('#speedValue').val(ui.value);
+    }
   });
 
-  $('#gridSlider').change(function (event) {
-    Game.resize(event.target.value);
+  $('#gridSlider').slider({
+    range: "min",
+    value: Game.GridSize,
+    min: 20,
+    max: 200,
+    slide: function(event, ui) {
+      Game.resize(ui.value);
+      $('#gridValue').val(ui.value + " x " + ui.value);
+    }
+  });
+
+  $('#radiusSlider').slider({
+    range: "min",
+    value: Game.NeighborRadius,
+    min: 1,
+    max: 10,
+    slide: function (event, ui) {
+      var newMax = 4 * ui.value * ui.value + 4 * ui.value - 1;
+      Game.NeighborRadius = ui.value;
+      $('#deathSlider').slider("option", "max", newMax);  //Change death slider max
+      $('#generationSlider').slider("option", "max", newMax);   //Change generation max value
+      $('#radiusValue').val(ui.value);      //Change the radius display vlaue
+    }
+  });
+
+  $('#deathSlider').slider({
+    range: true,
+    max: 4 * Game.NeighborRadius * Game.NeighborRadius + 4 * Game.NeighborRadius,
+    values: [ Game.LonelinessThreshold, Game.OverpopulationThreshold ],
+    slide: function(event, ui) {
+      Game.LonelinessThreshold = ui.values[0];      //Set loneliness and overpopulation threshold
+      Game.OverpopulationThreshold = ui.values[1];
+      $('#deathValue').val(ui.values[0] + " - " + ui.values[1]);
+    }
+  });
+
+  $('#generationSlider').slider({
+    range: true,
+    max: 4 * Game.NeighborRadius * Game.NeighborRadius + 4 * Game.NeighborRadius,
+    values: [Game.GenerationMin, Game.GenerationMax],
+    slide: function(event, ui) {
+      Game.GenerationMin = ui.values[0];
+      Game.GenerationMax = ui.values[1];
+      $('#genValue').val(ui.values[0] + " - " + ui.values[1]);
+    }
+  });
+
+  $('#boundaryMenu').selectmenu({
+    select: function(event, ui) {
+      if (ui.item.value == "boundaryDead")
+        Game.BoundaryOption = 0;
+      else if (ui.item.value == "boundaryAlive")
+        Game.BoundaryOption = 1;
+      else if (ui.item.value == "boundaryToroidal")
+        Game.BoundaryTorodal = 2;
+    }
   });
 });
