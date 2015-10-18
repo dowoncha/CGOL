@@ -120,8 +120,6 @@ function Cell(x, y) {
 Cell.prototype.update = function () {
   var neighborcount = Game.NeighborFunction(this);
 
-  console.log(neighborcount);
-
   /* Only check alive cells */
   if (this.alive === true) {
     /* Death by loneliness*/
@@ -235,13 +233,13 @@ Cell.prototype.reset = function () {
 /* Set the cell to dead*/
 Cell.prototype.setDead = function() {
   this.alive = false;
-  this.color = "rgba(192,192,192,0.7)";
+  this.color = "rgb(192,192,192)";
 }
 /* Set the cell to alive and evaluated*/
 Cell.prototype.setAlive = function() {
   this.evaluated = true;
   this.alive = true;
-  this.color = "rgb(255,255,0)";
+  this.color = "rgb(0,0,0)";
 }
 /* If the cell is alive then set dead or if dead set alive */
 Cell.prototype.flipState = function() {
@@ -290,10 +288,6 @@ $(document).ready(function () {
     var cellPos = getCellPos(mousePos);
     var clickedCell = Game.Cells[cellPos.x + cellPos.y * Game.GridSize];
 
-    var message = "Clicked cell position: " + mousePos.x + ',' + mousePos.y;
-    console.log(message);
-    console.log(Game.CellSize);
-
     /* Event based on which click event occurred*/
     if (event.shiftKey)
       clickedCell.setAlive();
@@ -301,6 +295,8 @@ $(document).ready(function () {
       clickedCell.setDead();
     else
       clickedCell.flipState();
+
+    Game.draw();
   });
 
   /* Set initial display values here*/
