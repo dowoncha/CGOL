@@ -4,7 +4,8 @@ var canvas;
 var ctx;
 
 Game.Speed = 1000;    //Speed to run the simulation, 1000 = 1ms
-Game.Cells = [];      //Array to hold all the cell
+Game.Cells = [];      //Array to hold all the cell, 0 for non eval, 1 for dead, 2 for alive
+Game.NewGen = [];
 Game.GridSize = 20;
 Game.NeighborRadius = 1;
 Game.LonelinessThreshold = 2;
@@ -14,9 +15,13 @@ Game.GenerationMax = 3;
 Game.IntervalID = false;    //Id of game. true if running, false if not running
 /* Initialize Cells by total height and width */
 Game.initCells = function () {
-  for (var y = 0; y < Game.GridSize; ++y)
-    for (var x = 0; x < Game.GridSize; ++x)
-      Game.Cells.push(new Cell(x, y));
+  var size = Game.GridSize;
+  for (var y = 0; y < size; ++y)
+    for (var x = 0; x < size; ++x)
+    {
+      Game.Cells.push(0);
+      Game.NewGen.push(0);
+    }
 
   console.log("Initializing Cells. Total cell size is: %d", Game.Cells.length);
 };
@@ -24,8 +29,8 @@ Game.initCells = function () {
 Game.start = function () {
   /* Check if game is currently running*/
   if (!Game.isRunning()) {
-    console.log("Starting\n");
-    Game.IntervalID = setInterval(Game.run, Game.speed);
+    console.log("Starting speed is: %d", Game.Speed);
+    Game.IntervalID = setInterval(Game.run, Game.Speed);
   }
 };
 /* Stop the simulation*/
@@ -47,39 +52,87 @@ Game.isRunning = function () {
 /* Reset will clear the screen, reset all cells to non evaluated, clear the screen */
 Game.reset = function () {
   Game.stop();
-  for (var i = 0; i < Game.Cells.length; ++i)
-    Game.Cells[i].reset();
+  var l = Game.Cells.length;
+  for (var i = 0; i < l; ++i)
+    Game.Cells[i] = 0;
   /* Should clear the screen since every cell should be non evaluated */
   Game.draw();
 };
 /* Called with setinterval to do updates and draws */
 Game.run = function () {
   Game.update();
+
+  Game.copyNewGeneration();
+
   Game.draw();
 };
 /* Update all cells in the Game*/
 Game.update = function () {
-  for (var i = 0; i < Game.Cells.length; ++i)
-    Game.Cells[i].update();
+  var neighborcount;
+  var cellcounter = 0;
+
+  var size = Game.GridSize;
+  for (var y = 0; y < size; ++y) {
+    for (var x = 0; x < size; ++x, ++cellcounter ) {
+      neighborcount = Game.NeighborFunction(x, y);
+
+      /* If the cell is alive*/
+      if (Game.Cells[cellcounter] === 2 && (neighborcount < Game.LonelinessThreshold || neighborcount > Game.OverpopulationThreshold)) {
+          Game.NewGen[cellcounter] = 1;
+      }
+      /* If the cell is dead*/
+      else if ( Game.Cells[cellcounter] != 2 && (neighborcount >= Game.GenerationMin && neighborcount <= Game.GenerationMax)) {
+        //console.log("Generation");
+        /* Check dead cells for generation*/
+        Game.NewGen[cellcounter] = 2;
+      }
+      else {
+        Game.NewGen[cellcounter] = Game.Cells[cellcounter];
+      }
+    }
+  }
 };
 /* Call draw on all cells*/
 Game.draw = function () {
-  for (var i = 0; i < Game.Cells.length; ++i)
-    Game.Cells[i].draw();
-};
-/* Randomize all cells to be either alive or dad*/
-Game.randomize = function () {
-  console.log("Randomize called\n");
+  var cell;
+  /* Variable for the draw y value*/
+  var size = Game.GridSize;
+  var l = Game.Cells.length;
+  var cellSize = Game.CellSize;
 
-  for (var i = 0; i < Game.Cells.length; ++i) {
-    var rand = Math.random();
+  Game.clearScreen();
 
-    if (rand < 0.5)
-      Game.Cells[i].setDead();
-    else {
-      Game.Cells[i].setAlive();
+  for (var y = 0, drawY = 0; y < l; y += size, drawY += cellSize)
+  {
+    for (var x = 0, drawX = 0; x < size; ++x, drawX += cellSize )
+    {
+      /* Get the value of the cell */
+      cell = Game.Cells[x + y];
+      ctx.fillStyle = (cell === 0) ? "rgb(255, 255, 255)" : (cell === 1) ? "rgb(200, 200, 200)" : "rgb(0,0, 0)";
+      ctx.fillRect(drawX, drawY, Game.CellSize, Game.CellSize);
     }
   }
+};
+
+Game.clearScreen = function() {
+  ctx.fillStyle = "rgb(255, 255, 255)";
+  ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+};
+
+Game.copyNewGeneration = function() {
+  var l = Game.NewGen.length;
+  for (var i = 0; i < l; ++i)
+    Game.Cells[i] = Game.NewGen[i];
+}
+/* Randomize all cells to be either alive or dad*/
+Game.randomize = function () {
+  //console.log("Randomize called\n");
+
+  var l = Game.Cells.length;
+  for (var i = 0; i < l; ++i)
+    Game.NewGen[i] = Math.round(Math.random() + 1);
+
+  Game.copyNewGeneration();
 
   Game.draw();
 };
@@ -94,6 +147,7 @@ Game.resize = function (newsize) {
   Game.CellSize = ctx.canvas.width / Game.GridSize;
   /* Clear the array of cells */
   Game.Cells.length = 0;
+  Game.NewGen.length = 0;
   /* Reinitialize new cells*/
   Game.initCells();
 };
@@ -104,150 +158,91 @@ Game.changeSpeed = function(newspeed) {
   Game.start();
 }
 
-/** new class for cells
-* Color key
-* Non-evaluated: rgb(255, 255, 255)
-* Dead: rgba(192,192,192,0.7)
-* Alive: rgb(255,255,0) **/
-function Cell(x, y) {
-  this.x = x;
-  this.y = y;
-  this.evaluated = false;
-  this.alive = false;
-  this.color = "rgb(255, 255, 255)";    /* Initial color of a cell is non existant white*/
-}
-/* Function to call when */
-Cell.prototype.update = function () {
-  var neighborcount = Game.NeighborFunction(this);
-
-  /* Only check alive cells */
-  if (this.alive === true) {
-    /* Death by loneliness*/
-    if (neighborcount < Game.LonelinessThreshold || neighborcount > Game.OverpopulationThreshold) {
-      console.log("Death by loneliness or overpopulation");
-      this.setDead();
-    }
-  }
-  /* Check dead cells for generation*/
-  else if (neighborcount >= Game.GenerationMin && neighborcount <= Game.GenerationMax) {
-    console.log("Generation");
-    this.setAlive();
-  }
-};
-/* Draw the cell */
-Cell.prototype.draw = function () {
-  ctx.fillStyle = this.color;
-  ctx.fillRect(this.x * Game.CellSize, this.y * Game.CellSize, Game.CellSize, Game.CellSize);
-};
+    /* Initial color of a cell is non existant white*/
 /* Find all of the cells that are alive within the radius */
-function checkBoundaryDead(cell) {
+function checkBoundaryDead(cellX, cellY) {
+//  console.log("Check boundary dead called");
+
   /* Counts the number of neighbors alive within the radius */
   var counter = 0;
 
   /* Get boundaries of the radius to check, currently just stop at edges*/
-  var Top = Math.max(cell.y - Game.NeighborRadius, 0);
-  var Bot = Math.min(cell.y + Game.NeighborRadius, Game.GridSize-1);
-  var Left = Math.max(cell.x - Game.NeighborRadius, 0);
-  var Right = Math.min(cell.x + Game.NeighborRadius, Game.GridSize-1);
+  var Top = Math.max(cellY - Game.NeighborRadius, 0);
+  var Bot = Math.min(cellY + Game.NeighborRadius, Game.GridSize - 1);
+  var Left = Math.max(cellX - Game.NeighborRadius, 0);
+  var Right = Math.min(cellX + Game.NeighborRadius, Game.GridSize - 1);
 
-  for (var y = Top; y <= Bot; ++y)
+  var rowY = Top * Game.GridSize;
+  for (var y = Top; y <= Bot; ++y, rowY += Game.GridSize) {
     for (var x = Left; x <= Right; ++x) {
       /* If the neighbor is out of bounds then we consider it dead and dont count it */
-      if (cell.y == y && cell.x == x)
+      if (cellY === y && cellX === x)
         continue;
 
       /* If the neighbor is alive increment the counter*/
-      if (Game.Cells[x + y * Game.GridSize].alive === true)
+      if (Game.Cells[x + rowY] === 2)
         ++counter;
     }
+  }
 
   return counter;
 };
 
-function checkBoundaryAlive(cell) {
+function checkBoundaryAlive(cellX, cellY) {
   var counter = 0;
 
+  /* Find the start y row value in the array*/
+  var rowY = (cellY - Game.NeighborRadius) * Game.GridSize;
   /* Get boundaries of the radius to check, currently just stop at edges*/
-  var Top = cell.y - Game.NeighborRadius;
-  var Bot = cell.y + Game.NeighborRadius;
-  var Left = cell.x - Game.NeighborRadius;
-  var Right = cell.x + Game.NeighborRadius;
-
-  for (var y = Top; y <= Bot; ++y)
-    for (var x = Left; x <= Right; ++x) {
+  for (var y = cellY - Game.NeighborRadius; y <= cellY + Game.NeighborRadius; ++y, rowY += Game.GridSize)
+    for (var x = cellX - Game.NeighborRadius; x <=  cellX + Game.NeighborRadius; ++x) {
       /* We don't check ourselves*/
-      if (this.y == y && this.x == x)
+      if (cellY == y && cellX == x)
         continue;
 
       /* If the neighbor is alive increment the counter*/
       /* If in bounds check if cell is alive*/
-      if (y < 0 || y >= Game.GridSize || x < 0 || x >= Game.GridSize || Game.Cells[x + y * Game.GridSize].alive === true)
+      if (y < 0 || y >= Game.GridSize || x < 0 || x >= Game.GridSize || Game.Cells[x + rowY] == 2)
         ++counter;
     }
 
   return counter;
   };
 
-function CheckBoundaryToroidal(cell) {
+function CheckBoundaryToroidal(cellX, cellY) {
   var counter = 0;
 
-  /* Get boundaries of the radius to check, currently just stop at edges*/
-  var Top = cell.y - Game.NeighborRadius;
-  var Bot = cell.y + Game.NeighborRadius;
-  var Left = cell.x - Game.NeighborRadius;
-  var Right = cell.x + Game.NeighborRadius;
+  /* Run through for all cells with the radius*/
+  for (var y = cellY - Game.NeighborRadius; y <= cellY + Game.NeighborRadius; ++y)
+  {
+    var newY = y;
+    if (y < 0)
+      newY = Game.GridSize + y;
+    else if (y >= Game.GridSize)
+      newY = y - Game.GridSize;
 
-  for (var y = Top; y <= Bot; ++y)
-    for (var x = Left; x <= Right; ++x) {
-      /* We don't check ourselves*/
-      if (cell.y == y && cell.x == x)
-        continue;
-
+    for (var x = cellX - Game.NeighborRadius; x <= cellX + Game.NeighborRadius; ++x) {
         /* If the current y is above the grid then loop around to bottom*/
-      var newY = y, newX = x;
-      if (y < 0)
-        newY = Game.GridSize + y;
-      else if (y >= Game.GridSize)
-        newY = y - Game.GridSize;
-
+      var newX = x;
       if (x < 0)
         newX = Game.GridSize + x;
       else if (x >= Game.GridSize)
         newX = x - Game.GridSize;
 
-        console.log("Cell tor %d %d", newX, newY);
+      //console.log("Cell tor %d %d", newX, newY);
 
-      if (Game.Cells[newX + newY * Game.GridSize].alive === true)
+      /* We don't check ourselves*/
+      if (cellY == y && cellX == x)
+        continue;
+
+      if (Game.Cells[newX + newY * Game.GridSize] == 2)
         ++counter;
     }
+  }
 
   return counter;
 };
 
-/* Set cell to non evaluated and dead */
-Cell.prototype.reset = function () {
-  this.evaluated = false;
-  this.alive = false;
-  this.color = "rgb(255, 255, 255)";
-};
-/* Set the cell to dead*/
-Cell.prototype.setDead = function() {
-  this.alive = false;
-  this.color = "rgb(192,192,192)";
-}
-/* Set the cell to alive and evaluated*/
-Cell.prototype.setAlive = function() {
-  this.evaluated = true;
-  this.alive = true;
-  this.color = "rgb(0,0,0)";
-}
-/* If the cell is alive then set dead or if dead set alive */
-Cell.prototype.flipState = function() {
-  if (this.alive)
-    this.setDead();
-  else
-    this.setAlive();
-}
 /* Get position of mouse on the canvas*/
 function getMousePos(canvas, event) {
     var rect = canvas.getBoundingClientRect();
@@ -283,18 +278,20 @@ $(document).ready(function () {
   $('#stepBtn').click(Game.step);
   $('#resetBtn').click(Game.reset);
   $('#randomBtn').click(Game.randomize);
+
   $('#canvas').click(function (event) {
     var mousePos = getMousePos(canvas, event);
     var cellPos = getCellPos(mousePos);
-    var clickedCell = Game.Cells[cellPos.x + cellPos.y * Game.GridSize];
+
+    var cellLocation = cellPos.x + cellPos.y * Game.GridSize;
 
     /* Event based on which click event occurred*/
     if (event.shiftKey)
-      clickedCell.setAlive();
+      Game.Cells[cellLocation] = 2;
     else if (event.ctrlKey)
-      clickedCell.setDead();
+      Game.Cells[cellLocation] = 1;
     else
-      clickedCell.flipState();
+      Game.Cells[cellLocation] = (Game.Cells[cellLocation] != 2) ? 2 : 1;
 
     Game.draw();
   });
