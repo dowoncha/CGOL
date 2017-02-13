@@ -1,3 +1,19 @@
+class Node {
+  constructor(status) {
+    this.status = status;
+  }
+}
+
+class Conway {
+  constructor(grid_size) {
+    this.grid_size = grid_size;
+
+    this.speed = 1000;
+
+    this.cells.fill(new Node, grid_size * grid_size);
+  }
+}
+
 var Game = {};
 
 var canvas;
